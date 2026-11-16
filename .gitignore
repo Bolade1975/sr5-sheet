@@ -1,0 +1,13 @@
+node_modules
+.claude/settings.local.json
+dist
+dev-dist
+coverage
+node_modules/.tmp
+*.tsbuildinfo
+.DS_Store
+# Character data must never be committed to the public repository.
+*.sr5.json
+sr5-backup-*.json
+characters/
+private/
