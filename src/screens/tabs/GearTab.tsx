@@ -12,8 +12,16 @@ export function GearTab() {
     { value: '', label: '— choose skill —' },
     ...c.skills.map((s) => ({ value: s.id, label: s.name })),
   ]
+  const vehicleOptions = [
+    { value: '', label: '— carried by hand —' },
+    ...c.rigger.vehicles.map((v) => ({ value: v.id, label: v.name || 'Unnamed vehicle' })),
+  ]
   return (
     <div className="grid wide">
+      <div className="banner info span-all">
+        <b>Carried</b> marks what you bring on the current mission (shown on Current Loadout). It
+        never equips, activates or adds bonuses — “Worn” and “Active” stay separate.
+      </div>
       <Panel
         title="Ranged Weapons"
         className="span-all"
@@ -35,12 +43,16 @@ export function GearTab() {
             ammoType: '',
             ammoSpare: '',
             active: false,
+            carried: false,
+            mountedOn: null,
             source: '',
             notes: '',
           })}
           title={(w) => (
             <>
-              {w.active && <span className="badge cyan">active</span>} {w.name || 'Unnamed weapon'}
+              {w.active && <span className="badge cyan">active</span>}{' '}
+              {w.mountedOn && <span className="badge magenta">mounted</span>}{' '}
+              {w.name || 'Unnamed weapon'}
             </>
           )}
           columns={[
@@ -52,6 +64,7 @@ export function GearTab() {
             { label: 'Ammo', get: (w) => `${w.ammoCurrent ?? '—'}/${w.ammoCapacity ?? '—'}` },
             { label: 'Pool', get: (w) => rangedWeaponPool(c, w).value ?? '—' },
           ]}
+          carried
           addLabel="Add ranged weapon"
           fields={[
             { key: 'name', label: 'Weapon', type: 'text', full: true },
@@ -66,6 +79,17 @@ export function GearTab() {
             { key: 'ammoType', label: 'Ammo type', type: 'text' },
             { key: 'ammoSpare', label: 'Spare ammo', type: 'text' },
             { key: 'active', label: 'Active (Play dashboard)', type: 'bool' },
+            ...(c.rigger.vehicles.length > 0
+              ? [
+                  {
+                    key: 'mountedOn',
+                    label: 'Mounted on vehicle/drone',
+                    type: 'select' as const,
+                    options: vehicleOptions,
+                    nullable: true,
+                  },
+                ]
+              : []),
             SOURCE_FIELD,
             NOTES_FIELD,
           ]}
@@ -84,6 +108,7 @@ export function GearTab() {
             damage: '',
             ap: '',
             active: false,
+            carried: false,
             source: '',
             notes: '',
           })}
@@ -99,6 +124,7 @@ export function GearTab() {
             { label: 'AP', get: (w) => w.ap || '—' },
             { label: 'Pool', get: (w) => meleeWeaponPool(c, w).value ?? '—' },
           ]}
+          carried
           addLabel="Add melee weapon"
           fields={[
             { key: 'name', label: 'Weapon', type: 'text', full: true },
@@ -129,6 +155,7 @@ export function GearTab() {
             rating: null,
             accessory: false,
             equipped: false,
+            carried: false,
             source: '',
             notes: '',
           })}
@@ -143,6 +170,7 @@ export function GearTab() {
               get: (a) => (a.rating === null ? '—' : `${a.accessory ? '+' : ''}${a.rating}`),
             },
           ]}
+          carried
           addLabel="Add armor"
           fields={[
             { key: 'name', label: 'Armor', type: 'text', full: true },
@@ -229,6 +257,7 @@ export function GearTab() {
             rating: null,
             quantity: null,
             category: '',
+            carried: false,
             source: '',
             notes: '',
           })}
@@ -242,6 +271,7 @@ export function GearTab() {
             { label: 'Rtg', get: (g) => g.rating ?? '—' },
             { label: 'Qty', get: (g) => g.quantity ?? '—' },
           ]}
+          carried
           addLabel="Add gear"
           fields={[
             { key: 'name', label: 'Item', type: 'text', full: true },

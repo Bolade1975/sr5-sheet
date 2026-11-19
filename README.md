@@ -13,7 +13,10 @@ Offline character sheet til **Shadowrun 5th Edition** — optimeret til tablet (
 - General Dice Pools + egne pools bygget af strukturerede dele (ingen tekst-formler).
 - Navngivne modifiers: permanent / situational (toggle) / conditional (kun påmindelse). Manuelle overrides markeres tydeligt og kan nulstilles.
 - JSON-eksport af én karakter, fuld backup og gendannelse med validering og valg mellem kopi/erstatning.
-- PDF (Full Character Sheet eller Play Summary), lyst A4-layout, sidetal, navn og eksportdato på hver side.
+- PDF (Full Character Sheet, Play Summary eller Current Loadout), lyst A4-layout, sidetal, navn og eksportdato på hver side.
+- **Carried**: touchvenlig markering pr. våben, rustning, udstyr, drone/køretøj, deck/commlink, focus og RCC. Betyder kun "medbragt på missionen" — den tager ikke rustning på, aktiverer ikke våben og slår ingen bonusser til.
+- **Current Loadout**: samlet spilleoverblik over alt medbragt udstyr med stats og pools (defense, damage resistance, initiative, Edge, condition, limits, favorit-pools) samt droner/køretøjer med pools pr. styringsform (autonomous, jumped in, remote control).
+- **Karma History**: manuel log over karmaforbrug (dato, kategori, før/efter, Karma Spent, kommentar/kilde) med automatisk summering og afstemning (Balanced/Mismatch). Loggen ændrer aldrig karakterens værdier eller karmasaldi.
 
 ## Regelgrundlag
 
@@ -41,7 +44,7 @@ npm run preview    # server den byggede app lokalt (PWA/service worker aktiv)
 
 Appen bruger relativ `base`, så den virker under `https://<bruger>.github.io/<repo>/` uden konfiguration.
 
-**Karakterdata kommer aldrig i repositoryet**: data ligger kun i browseren. `.gitignore` udelukker desuden typiske eksportfiler (`*.sr5.json`, `sr5-backup-*.json`). Læg ikke dine egne JSON-filer i projektmappen.
+**Karakterdata kommer aldrig i repositoryet**: data ligger kun i browseren. `.gitignore` udelukker desuden typiske eksportfiler (`*.sr5.json`, `sr5-backup-*.json`, `*.pdf`). Læg ikke dine egne JSON-filer i projektmappen.
 
 ## Installér som app (PWA) på tablet
 
@@ -59,7 +62,7 @@ Appen bruger relativ `base`, så den virker under `https://<bruger>.github.io/<r
 
 ## PDF-eksport
 
-Fanen **Export**: vælg _Full Character Sheet_ eller _Play Summary_, og om noter og Karma/nuyen-historik skal med. Listen viser præcis hvilke sektioner der kommer med. Inaktive eller tomme moduler udelades. Manuelle overrides markeres "OVR" og listes. Filen downloades lokalt; du sender den selv til GM.
+Fanen **Export**: vælg _Full Character Sheet_, _Play Summary_ eller _Current Loadout_, og om noter og historik (Karma & ¥ samt Karma History med afstemning) skal med. **Export Current Loadout PDF** findes også direkte på fanen Current Loadout. Listen viser præcis hvilke sektioner der kommer med. Inaktive eller tomme moduler udelades. Manuelle overrides markeres "OVR" og listes. Filen downloades lokalt; du sender den selv til GM.
 
 ## Struktur
 
@@ -72,4 +75,8 @@ src/screens  roster, karakterskærm og faner
 src/pdf      PDF-dokumentbygger (pdfmake) — separat lyst layout
 ```
 
-Datamodellen er versioneret (`CHARACTER_SCHEMA_VERSION`). Ældre data migreres ved indlæsning; nye felter får standardværdier, så eksisterende data bevares.
+Datamodellen er versioneret (`CHARACTER_SCHEMA_VERSION`, nu v2). Ældre data og backupfiler migreres ved indlæsning/import; nye felter får standardværdier, så eksisterende data bevares. Se `CHANGELOG.md`.
+
+## Opdatering på tablet
+
+Appens version står i toppen af roster-skærmen (fx `v0.2.0`). En ny version hentes automatisk, når appen åbnes eller kommer i forgrunden med netforbindelse; siden genindlæses én gang. Karakterer ligger i IndexedDB og berøres ikke af opdateringen. Ryd **ikke** webstedsdata for at opdatere — det sletter karaktererne.

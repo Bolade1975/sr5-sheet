@@ -83,6 +83,38 @@ export const RULES = {
   livingPersona: r('251', 'Living Persona: DR=RES, Attack=CHA, Sleaze=INT, DP=LOG, Firewall=WIL'),
   fading: r('251', 'Fading resisted with Resonance + Willpower'),
   knowledgeAttributes: r('151', 'Street/Interests/Language: INT; Academic/Professional: LOG'),
+  vehicleTest: r('199', 'Vehicle Test: Vehicle skill + Reaction [Handling]'),
+  vehicleSkills: r('146', 'Vehicle skills (Gunnery, Pilot …) are linked to Reaction unless noted'),
+  controlRig: r(
+    '452',
+    'Control rig, jumped in: +Rating dice on Vehicle skill tests, +Rating to Handling and Speed, Vehicle Test thresholds −Rating (min 1)',
+  ),
+  riggingVR: r(
+    '266',
+    'Jumped in: device limits (Sensor, Speed, Handling, mounted weapon Accuracy) +control rig rating; Matrix bonuses (hot-sim +1) also apply to Vehicle Control, Gunnery and Sensor tests',
+  ),
+  mountedWeapons: r(
+    '183',
+    'Mounted weapons: Weapon skill + Agility [Accuracy] (manual) or Gunnery + Logic [Accuracy] (remote-operated)',
+  ),
+  droneGunnery: r(
+    '183',
+    'Drone gunnery: Pilot + [Weapon] Targeting autosoft [Accuracy]; drones cannot fire untrained',
+  ),
+  dronePerception: r(
+    '270',
+    'Drone perception: Pilot + Clearsight [Sensor]; jumped in: Perception + Intuition [Sensor]',
+  ),
+  controlDevice: r(
+    '238',
+    'Control Device: normal skill + attribute; limit is the lower of the normal limit and Data Processing',
+    'The p. 238 example uses Gunnery + Agility for a drone weapon, while p. 183 gives Gunnery + Logic for remote-operated systems.',
+  ),
+  autosoftSharing: r(
+    '269–270',
+    'Autosofts: RCC Sharing runs autosofts on all slaved drones; a drone running its own autosofts cannot use the RCC’s',
+  ),
+  vehicleDamage: r('205', 'Vehicle damage resistance: Body + Armor'),
 } satisfies Record<string, RuleRef>
 
 export type RuleKey = keyof typeof RULES

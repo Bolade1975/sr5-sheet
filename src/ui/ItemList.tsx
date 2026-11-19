@@ -18,6 +18,8 @@ export type FieldDef =
       label: string
       type: 'select'
       options: readonly { value: string; label: string }[]
+      /** Store null instead of '' for the empty option. */
+      nullable?: boolean
     }
 
 export type Column<T> = { label: string; get: (item: T) => ReactNode }
@@ -34,6 +36,8 @@ export function ItemList<T extends { id: string }>(props: {
   addLabel?: string
   extra?: (item: T, set: (patch: Partial<T>) => void) => ReactNode
   emptyText?: string
+  /** Show a "Carried" toggle per row (items must have a boolean `carried`). */
+  carried?: boolean
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
   const set = (id: string, patch: Partial<T>) =>
@@ -46,27 +50,35 @@ export function ItemList<T extends { id: string }>(props: {
       {props.items.map((it, idx) => {
         const open = openId === it.id
         return (
-          <div className="item" key={it.id}>
-            <button
-              type="button"
-              className="item-summary"
-              aria-expanded={open}
-              onClick={() => setOpenId(open ? null : it.id)}
-            >
-              <span className="item-title">{props.title(it)}</span>
-              {props.columns && (
-                <span className="item-cols">
-                  {props.columns.map((col) => (
-                    <span key={col.label}>
-                      {col.label} <b>{col.get(it)}</b>
-                    </span>
-                  ))}
+          <div className={`item ${props.carried && isCarried(it) ? 'is-carried' : ''}`} key={it.id}>
+            <div className="item-head">
+              <button
+                type="button"
+                className="item-summary"
+                aria-expanded={open}
+                onClick={() => setOpenId(open ? null : it.id)}
+              >
+                <span className="item-title">{props.title(it)}</span>
+                {props.columns && (
+                  <span className="item-cols">
+                    {props.columns.map((col) => (
+                      <span key={col.label}>
+                        {col.label} <b>{col.get(it)}</b>
+                      </span>
+                    ))}
+                  </span>
+                )}
+                <span aria-hidden style={{ color: 'var(--faint)', padding: '0 6px' }}>
+                  {open ? '▾' : '▸'}
                 </span>
+              </button>
+              {props.carried && (
+                <CarriedToggle
+                  checked={isCarried(it)}
+                  onChange={(v) => set(it.id, { carried: v } as unknown as Partial<T>)}
+                />
               )}
-              <span aria-hidden style={{ color: 'var(--faint)', padding: '0 6px' }}>
-                {open ? '▾' : '▸'}
-              </span>
-            </button>
+            </div>
             {open && (
               <div className="item-body stack">
                 <div className="fields">
@@ -131,6 +143,33 @@ export function ItemList<T extends { id: string }>(props: {
   )
 }
 
+function isCarried(it: unknown): boolean {
+  return (it as { carried?: unknown }).carried === true
+}
+
+/**
+ * Touch-friendly "Carried" switch (mission packing list). It only marks the
+ * item for the Current Loadout tab; it never equips or activates anything.
+ */
+export function CarriedToggle(props: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      className="carry-toggle"
+      role="switch"
+      aria-checked={props.checked}
+      aria-label="Carried"
+      title="Carried on the current mission (does not equip or activate)"
+      onClick={() => props.onChange(!props.checked)}
+    >
+      <span className="box" aria-hidden>
+        {props.checked ? '✓' : ''}
+      </span>
+      Carried
+    </button>
+  )
+}
+
 function FieldEditor(props: { def: FieldDef; item: Rec; onSet: (v: unknown) => void }) {
   const { def, item } = props
   const v = item[def.key]
@@ -173,7 +212,7 @@ function FieldEditor(props: { def: FieldDef; item: Rec; onSet: (v: unknown) => v
           label={def.label}
           value={typeof v === 'string' ? v : ''}
           options={def.options}
-          onChange={props.onSet}
+          onChange={(x) => props.onSet(def.nullable && x === '' ? null : x)}
         />
       )
   }

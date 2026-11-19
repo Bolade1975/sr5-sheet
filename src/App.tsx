@@ -7,7 +7,7 @@ type Route = { screen: 'roster' } | { screen: 'character'; id: string; tab: TabK
 
 /** Hash routes survive reloads and work under any GitHub Pages sub-path. */
 function parseHash(hash: string): Route {
-  const m = /^#\/c\/([^/]+)(?:\/([a-z]+))?/.exec(hash)
+  const m = /^#\/c\/([^/]+)(?:\/([A-Za-z]+))?/.exec(hash)
   if (m && m[1])
     return {
       screen: 'character',
@@ -56,7 +56,7 @@ export default function App() {
         <div className="topbar-row">
           <div className="topbar-title">
             SR5 RUNNER SHEET
-            <small>Shadowrun 5th Edition · offline character sheet</small>
+            <small>Shadowrun 5th Edition · offline character sheet · v{__APP_VERSION__}</small>
           </div>
         </div>
       </header>

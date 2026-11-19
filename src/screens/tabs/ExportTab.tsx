@@ -27,7 +27,7 @@ export function ExportTab() {
     try {
       const { renderPdf } = await import('../../pdf/exportPdf')
       const blob = await renderPdf(c, { ...opts, exportDate: new Date() })
-      const name = `${base}-${mode === 'full' ? 'sheet' : 'summary'}.pdf`
+      const name = `${base}-${mode === 'full' ? 'sheet' : mode === 'loadout' ? 'loadout' : 'summary'}.pdf`
       downloadBlob(name, blob)
       setDone(
         `Saved ${name} (${Math.round(blob.size / 1024)} KB). Send it to your GM yourself — the app never sends anything.`,
@@ -53,18 +53,30 @@ export function ExportTab() {
             options={[
               { value: 'full', label: 'Full Character Sheet' },
               { value: 'summary', label: 'Play Summary' },
+              { value: 'loadout', label: 'Current Loadout' },
             ]}
           />
-          <Check
-            label="Include background & notes"
-            checked={includeNotes}
-            onChange={setIncludeNotes}
-          />
-          <Check
-            label="Include Karma & nuyen history"
-            checked={includeHistory}
-            onChange={setIncludeHistory}
-          />
+          {mode !== 'loadout' && (
+            <>
+              <Check
+                label="Include background & notes"
+                checked={includeNotes}
+                onChange={setIncludeNotes}
+              />
+              <Check
+                label="Include Karma & nuyen history and Karma History"
+                checked={includeHistory}
+                onChange={setIncludeHistory}
+              />
+            </>
+          )}
+          {mode === 'loadout' && (
+            <p className="hint">
+              Everything marked Carried with its stats and pools, plus defense, initiative, Edge,
+              condition, limits, active modifiers and overrides. Also available on the Current
+              Loadout tab.
+            </p>
+          )}
           <div>
             <button className="btn primary" disabled={busy} onClick={() => void exportPdf()}>
               {busy ? 'Generating…' : 'Export PDF'}

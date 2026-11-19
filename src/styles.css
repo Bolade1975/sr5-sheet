@@ -481,7 +481,49 @@ main {
   border-radius: 8px;
   background: #0c1220;
 }
+.item-head {
+  display: flex;
+  align-items: stretch;
+}
+.item.is-carried {
+  border-color: rgba(60, 207, 216, 0.45);
+}
+.carry-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--touch);
+  min-width: var(--touch);
+  padding: 0 10px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.carry-toggle .box {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--faint);
+  border-radius: 5px;
+  color: var(--bg);
+  font-weight: 700;
+}
+.carry-toggle[aria-checked='true'] {
+  color: var(--cyan);
+}
+.carry-toggle[aria-checked='true'] .box {
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
 .item-summary {
+  flex: 1;
+  min-width: 0;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -710,4 +752,116 @@ main {
   background: var(--cyan);
   color: #04151a;
   font-weight: 700;
+}
+
+/* ---------- current loadout ---------- */
+.loadout .panel-head {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+}
+.stats > div {
+  display: flex;
+  gap: 5px;
+  align-items: baseline;
+  min-width: 0;
+}
+.stats dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.stats dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.mod-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.9rem;
+}
+.carried-row {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.carried-row .grow,
+.grow {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.carried-card {
+  gap: 6px;
+}
+.neg {
+  color: var(--red);
+}
+.mode-block {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mode-block h3 {
+  margin: 0;
+  font-family: var(--head);
+  color: var(--magenta);
+  font-size: 1.05rem;
+}
+
+/* ---------- karma history ---------- */
+.recon {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+}
+.recon .cell {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0c1220;
+  padding: 8px 10px;
+}
+.recon .cell .lbl {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.recon .cell .val {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.recon-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-family: var(--head);
+  letter-spacing: 0.05em;
+  font-size: 1.1rem;
+}
+.recon-status.balanced {
+  color: var(--green);
+  border: 1px solid var(--green);
+}
+.recon-status.mismatch {
+  color: var(--red);
+  border: 1px solid var(--red);
+}
+.recon-status.needsInput {
+  color: var(--amber);
+  border: 1px solid var(--amber);
 }

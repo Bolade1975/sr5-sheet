@@ -67,8 +67,8 @@ export function exampleCharacter(): Character {
   add('Electronic Warfare', 3)
   add('Spellcasting', 4, ['Combat Spells'], true)
   add('Counterspelling', 2)
-  add('Pilot Ground Craft', 3, ['Wheeled'])
-  add('Gunnery', 3)
+  const pilotGround = add('Pilot Ground Craft', 3, ['Wheeled'])
+  const gunnery = add('Gunnery', 3)
   add('Compiling', 2)
   add('Registering', 2)
   add('Etiquette', 3, ['Street'])
@@ -140,6 +140,8 @@ export function exampleCharacter(): Character {
       notes: 'Demo only',
     },
   ]
+  const droneId = newId()
+  const lmgId = newId()
   c.rangedWeapons = [
     {
       id: newId(),
@@ -155,8 +157,29 @@ export function exampleCharacter(): Character {
       ammoType: 'Regular',
       ammoSpare: '2 clips',
       active: true,
+      carried: true,
+      mountedOn: null,
       source: '',
       notes: '',
+    },
+    {
+      id: lmgId,
+      name: 'Example Drone LMG (mounted)',
+      skillId: gunnery.id,
+      accuracy: 5,
+      damage: '9P',
+      ap: '-2',
+      mode: 'FA',
+      rc: '5',
+      ammoCapacity: 50,
+      ammoCurrent: 50,
+      ammoType: 'Regular',
+      ammoSpare: '1 belt',
+      active: false,
+      carried: false,
+      mountedOn: droneId,
+      source: '',
+      notes: 'Example weapon mounted on the example drone.',
     },
   ]
   c.meleeWeapons = [
@@ -169,6 +192,7 @@ export function exampleCharacter(): Character {
       damage: '(STR+2)P',
       ap: '-3',
       active: true,
+      carried: true,
       source: '',
       notes: '',
     },
@@ -180,6 +204,7 @@ export function exampleCharacter(): Character {
       rating: 12,
       accessory: false,
       equipped: true,
+      carried: true,
       source: '',
       notes: '',
     },
@@ -189,6 +214,7 @@ export function exampleCharacter(): Character {
       rating: 2,
       accessory: true,
       equipped: true,
+      carried: true,
       source: '',
       notes: '',
     },
@@ -230,6 +256,35 @@ export function exampleCharacter(): Character {
   ]
   c.reputation = { streetCred: 2, notoriety: 1, publicAwareness: 0 }
   c.resources = { nuyen: 1500, karma: 4, karmaTotal: 12 }
+  // Example log: 7 + 1 = 8 spent, 12 earned → expected 4 unspent (balanced).
+  c.karmaHistory = [
+    {
+      id: newId(),
+      date: '2026-01-10',
+      category: 'Specialization',
+      name: 'Example: Perception specialization',
+      before: '—',
+      after: 'Visual',
+      karmaSpent: 7,
+      entryType: 'historical',
+      comment: 'Example entry',
+      source: 'SR5 p. 107',
+      fromLedgerId: null,
+    },
+    {
+      id: newId(),
+      date: '2026-02-02',
+      category: 'Knowledge/Language',
+      name: 'Example: new knowledge skill',
+      before: '—',
+      after: '1',
+      karmaSpent: 1,
+      entryType: 'new',
+      comment: 'Example entry',
+      source: 'SR5 p. 107',
+      fromLedgerId: null,
+    },
+  ]
   c.modifiers = [
     {
       id: newId(),
@@ -241,6 +296,7 @@ export function exampleCharacter(): Character {
       condition: '',
       source: '',
       notes: '',
+      itemId: null,
     },
     {
       id: newId(),
@@ -252,6 +308,7 @@ export function exampleCharacter(): Character {
       condition: '',
       source: 'SR5 p. 162',
       notes: '',
+      itemId: null,
     },
     {
       id: newId(),
@@ -263,6 +320,7 @@ export function exampleCharacter(): Character {
       condition: 'in dim light (example)',
       source: '',
       notes: '',
+      itemId: null,
     },
   ]
   c.matrix.devices = [
@@ -278,6 +336,7 @@ export function exampleCharacter(): Character {
       programSlots: 4,
       matrixDamage: 0,
       active: true,
+      carried: true,
       notes: '',
     },
   ]
@@ -293,11 +352,12 @@ export function exampleCharacter(): Character {
     noiseReduction: 2,
     sharing: 2,
     matrixDamage: 0,
+    carried: true,
     notes: '',
   }
   c.rigger.vehicles = [
     {
-      id: newId(),
+      id: droneId,
       name: 'Example Ground Drone',
       kind: 'drone',
       handling: '4/4',
@@ -316,7 +376,33 @@ export function exampleCharacter(): Character {
       sensors: '',
       ammo: '',
       active: true,
+      carried: true,
+      pilotSkillId: pilotGround.id,
       source: '',
+      notes: '',
+    },
+  ]
+  c.rigger.autosofts = [
+    {
+      id: newId(),
+      name: 'Example Clearsight',
+      rating: 3,
+      skill: 'Perception',
+      kind: 'clearsight',
+      weaponId: null,
+      vehicleIds: [droneId],
+      sharedOnRcc: false,
+      notes: '',
+    },
+    {
+      id: newId(),
+      name: 'Example LMG Targeting',
+      rating: 3,
+      skill: 'Gunnery',
+      kind: 'targeting',
+      weaponId: lmgId,
+      vehicleIds: [droneId],
+      sharedOnRcc: false,
       notes: '',
     },
   ]

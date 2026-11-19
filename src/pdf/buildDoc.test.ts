@@ -143,6 +143,75 @@ describe('PDF document', () => {
     }
   }, 60000)
 
+  it('builds a separate Current Loadout PDF with only carried items', () => {
+    const c = exampleCharacter()
+    c.meleeWeapons[0]!.carried = false
+    const o: PdfOptions = { ...FULL, mode: 'loadout' }
+    const ids = pdfSections(c, o).map((s) => s.id)
+    expect(ids).toEqual(
+      expect.arrayContaining(['lo-overview', 'lo-defense', 'lo-weapons', 'lo-armor', 'lo-mods']),
+    )
+    expect(ids).not.toContain('skills')
+    const doc = buildPdfDoc(c, o)
+    const json = JSON.stringify(doc.content)
+    expect(json).toContain('Example Heavy Pistol')
+    expect(json).not.toContain('{"text":"Example Combat Knife"')
+    expect(json).toContain('DRONE: EXAMPLE GROUND DRONE')
+    expect(json).toContain('RIGGER CONTROL (JUMPED IN)')
+    expect(JSON.stringify((doc.header as () => unknown)())).toContain('CURRENT LOADOUT')
+  })
+
+  it('reflects edits to the original items in the Loadout PDF', () => {
+    const c = exampleCharacter()
+    c.rangedWeapons[0]!.name = 'Renamed Pistol'
+    expect(JSON.stringify(buildPdfDoc(c, { ...FULL, mode: 'loadout' }).content)).toContain(
+      'Renamed Pistol',
+    )
+  })
+
+  it('renders a multi-page Loadout PDF with many long-named carried items', async () => {
+    const c = stressCharacter()
+    for (const v of c.rigger.vehicles) v.carried = true
+    for (let i = 0; i < 40; i++)
+      c.gear.push({
+        id: newId(),
+        name: `Gear ${i}: an extremely long carried item name that has to wrap cleanly in the table`,
+        rating: 2,
+        quantity: 1,
+        category: 'Misc',
+        carried: true,
+        source: '',
+        notes: 'Notes that are long enough to wrap onto a second line in the details column.',
+      })
+    const o: PdfOptions = { ...FULL, mode: 'loadout' }
+    const json = JSON.stringify(buildPdfDoc(c, o).content)
+    for (const g of c.gear) expect(json).toContain(g.name)
+    const buf = await render(c, o)
+    expect(buf.subarray(0, 5).toString()).toBe('%PDF-')
+    expect(pageCount(buf)).toBeGreaterThan(2)
+    if (process.env.PDF_OUT) {
+      writeFileSync(`${process.env.PDF_OUT}/stress-loadout.pdf`, buf)
+      writeFileSync(
+        `${process.env.PDF_OUT}/example-loadout.pdf`,
+        await render(exampleCharacter(), o),
+      )
+      writeFileSync(
+        `${process.env.PDF_OUT}/blank-loadout.pdf`,
+        await render(newCharacter('Blank Runner'), o),
+      )
+    }
+  }, 60000)
+
+  it('adds the Karma History with reconciliation when history is included', () => {
+    const c = exampleCharacter()
+    const ids = pdfSections(c, FULL).map((s) => s.id)
+    expect(ids).toContain('karmaHistory')
+    expect(JSON.stringify(buildPdfDoc(c, FULL).content)).toContain('Balanced')
+    expect(pdfSections(c, { ...FULL, includeHistory: false }).map((s) => s.id)).not.toContain(
+      'karmaHistory',
+    )
+  })
+
   it('includes every skill even when the list is long', () => {
     const c = stressCharacter()
     const json = JSON.stringify(buildPdfDoc(c, FULL).content)

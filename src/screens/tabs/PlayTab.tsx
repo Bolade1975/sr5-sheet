@@ -440,6 +440,7 @@ function SituationalPanel(props: { situational: Modifier[] }) {
                   condition: '',
                   source: 'Play dashboard',
                   notes: '',
+                  itemId: null,
                 }),
             )
             setName('')

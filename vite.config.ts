@@ -2,11 +2,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import pkg from './package.json' with { type: 'json' }
 
 // Relative base path so the build works from a GitHub Pages project subdirectory
 // without hardcoding the repository name.
 export default defineConfig({
   base: './',
+  // Shown in the app so you can see which version the tablet is running.
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   plugins: [
     react(),
     VitePWA({

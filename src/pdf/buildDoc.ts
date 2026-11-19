@@ -32,6 +32,8 @@ import {
   skillRating,
   type Pool,
 } from '../rules/pools'
+import { reconcileKarma } from '../rules/karma'
+import { buildLoadout, modState, type LoadoutVehicle } from '../rules/loadout'
 import { activeOverrides } from '../rules/summary'
 import { targetLabel } from '../rules/targets'
 import { attributeVisible } from '../rules/visibility'
@@ -43,7 +45,7 @@ import { attributeVisible } from '../rules/visibility'
  * instead of being truncated or scaled down.
  */
 
-export type PdfMode = 'full' | 'summary'
+export type PdfMode = 'full' | 'summary' | 'loadout'
 export type PdfOptions = {
   mode: PdfMode
   includeNotes: boolean
@@ -326,7 +328,7 @@ function conditionBlock(c: Character): Content {
   }
 }
 
-function poolTable(pools: Pool[]): Content {
+function poolTable(pools: Pool[], opts: { ruleNotes?: boolean; wide?: boolean } = {}): Content {
   return table(
     ['Pool', 'Dice', 'Limit', 'Basis', 'Notes'],
     pools.map((p) => [
@@ -334,9 +336,12 @@ function poolTable(pools: Pool[]): Content {
       { ...(poolTotal(p) as object), alignment: 'center' } as TableCell,
       { text: limitText(p) },
       { text: basis(p), fontSize: 7, color: C.muted },
-      { text: poolNotes(p), fontSize: 7 },
+      {
+        text: [poolNotes(p), ...(opts.ruleNotes ? p.notes : [])].filter(Boolean).join(' · '),
+        fontSize: 7,
+      },
     ]),
-    [92, 28, 50, '*', 120],
+    opts.wide ? [92, 28, 78, '*', 140] : [92, 28, 50, '*', 120],
   )
 }
 
@@ -796,6 +801,7 @@ function resonanceSection(c: Character): Content[] {
 type Section = SectionInfo & { content: () => Content[] }
 
 function sections(c: Character, o: PdfOptions): Section[] {
+  if (o.mode === 'loadout') return loadoutSections(c)
   const full = o.mode === 'full'
   const s: Section[] = []
   const favs = favoritePools(c)
@@ -1130,6 +1136,410 @@ function sections(c: Character, o: PdfOptions): Section[] {
         ),
       ],
     })
+  if (o.includeHistory && c.karmaHistory.length)
+    s.push({
+      id: 'karmaHistory',
+      title: `Karma History (${c.karmaHistory.length})`,
+      content: () => [sectionTitle('Karma History'), ...karmaHistoryBlock(c)],
+    })
+  return s
+}
+
+function karmaHistoryBlock(c: Character): Content[] {
+  const r = reconcileKarma(c)
+  const status =
+    r.status === 'balanced' ? 'Balanced' : r.status === 'mismatch' ? 'Mismatch' : 'Needs input'
+  return [
+    kv([
+      ['Total Karma Earned', dash(r.earned)],
+      ['Total Karma Spent (log)', String(r.spent)],
+      ['Unspent Karma', dash(r.unspent)],
+      ['Expected Unspent', dash(r.expected)],
+      [
+        'Difference',
+        {
+          text: `${r.difference === null ? '—' : signed(r.difference)}  ${status}`,
+          bold: true,
+          color: r.status === 'balanced' ? C.accent : r.status === 'mismatch' ? C.red : C.amber,
+        },
+      ],
+    ]),
+    table(
+      ['Date', 'Category', 'Purchased / improved', 'Before', 'After', 'Karma', 'Comment / source'],
+      c.karmaHistory.map((e) => [
+        { text: dash(e.date) },
+        { text: e.category },
+        {
+          text: [
+            e.name || '—',
+            e.entryType === 'historical' ? { text: '  earlier', color: C.muted, fontSize: 7 } : '',
+          ],
+        },
+        { text: dash(e.before) },
+        { text: dash(e.after) },
+        { text: dash(e.karmaSpent), alignment: 'center', bold: true },
+        { text: [e.comment, e.source].filter(Boolean).join(' · ') || '—', fontSize: 7 },
+      ]),
+      [52, 62, '*', 40, 40, 32, 110],
+    ),
+  ]
+}
+
+// ---------- Current Loadout PDF ----------
+
+function linkedText(mods: Character['modifiers']): string {
+  return mods.map((m) => `${signed(m.value)} ${m.name || 'modifier'} (${modState(m)})`).join('; ')
+}
+
+function ammoText(w: Character['rangedWeapons'][number]): string {
+  return (
+    `${dash(w.ammoCurrent)}/${dash(w.ammoCapacity)} ${w.ammoType}`.trim() +
+    (w.ammoSpare ? ` · spare: ${w.ammoSpare}` : '')
+  )
+}
+
+function vehicleBlock(lv: LoadoutVehicle): Content[] {
+  const v = lv.vehicle
+  const out: Content[] = [
+    sectionTitle(`${v.kind === 'drone' ? 'Drone' : 'Vehicle'}: ${v.name || 'Unnamed'}`, true),
+    table(
+      ['Hand', 'Speed', 'Accel', 'Body', 'Armor', 'Pilot', 'Sensor', 'DR', 'Condition', 'Matrix'],
+      [
+        [
+          { text: dash(v.handling) },
+          { text: dash(v.speed) },
+          { text: dash(v.acceleration) },
+          { text: dash(v.body) },
+          { text: dash(v.armor) },
+          { text: dash(v.pilot) },
+          { text: dash(v.sensor) },
+          { text: dash(v.deviceRating) },
+          { text: `${v.damage}/${dash(lv.conditionMonitor.value)}` },
+          { text: `${v.matrixDamage}/${dash(lv.matrixMonitor.value)}` },
+        ],
+      ],
+      [44, 40, 36, 32, 34, 32, 36, 28, '*', '*'],
+    ),
+  ]
+  if (lv.weapons.length)
+    out.push(
+      table(
+        ['Mounted weapon', 'Acc', 'DV', 'AP', 'Mode', 'RC', 'Ammo'],
+        lv.weapons.map((w) => [
+          { text: w.name || '—', bold: true },
+          { text: dash(w.accuracy), alignment: 'center' },
+          { text: dash(w.damage) },
+          { text: dash(w.ap) },
+          { text: dash(w.mode) },
+          { text: dash(w.rc) },
+          { text: ammoText(w) },
+        ]),
+        ['*', 26, 40, 30, 40, 26, 120],
+      ),
+    )
+  const extras: [string, string][] = []
+  if (lv.autosofts.length)
+    extras.push([
+      `Autosofts (${lv.autosoftSource === 'drone' ? 'installed' : 'shared via RCC'})`,
+      lv.autosofts
+        .map(
+          (a) =>
+            `${a.name || 'Autosoft'} ${dash(a.rating)}${a.kind === 'other' ? ' (type not set)' : ''}`,
+        )
+        .join(', '),
+    ])
+  if (v.weapons) extras.push(['Weapon notes', v.weapons])
+  if (v.ammo) extras.push(['Ammunition', v.ammo])
+  if (v.sensors) extras.push(['Sensors', v.sensors])
+  if (v.mods) extras.push(['Mods', v.mods])
+  if (v.notes) extras.push(['Notes', v.notes])
+  for (const w of lv.warnings) extras.push(['Check', w])
+  if (extras.length) out.push(kv(extras))
+  out.push(poolTable([lv.damageResistance], { ruleNotes: true, wide: true }))
+  for (const m of lv.modes) {
+    out.push({
+      text: m.title.toUpperCase(),
+      bold: true,
+      fontSize: 8,
+      color: C.accent2,
+      margin: [0, 4, 0, 2],
+    })
+    if (m.message) {
+      out.push({ text: m.message, fontSize: 8, color: C.muted })
+      continue
+    }
+    if (m.initiative.length)
+      out.push({
+        text: m.initiative
+          .map((i) => {
+            const v =
+              i.score.value === null
+                ? `needs ${i.score.missing.join(', ')}`
+                : `${i.score.value} + ${i.diceText}`
+            return `${i.label}: ${v}${i.score.overridden ? ' OVR' : ''}`
+          })
+          .join('   ·   '),
+        fontSize: 8,
+        margin: [0, 0, 0, 2],
+      })
+    if (m.pools.length) out.push(poolTable(m.pools, { ruleNotes: true, wide: true }))
+    for (const n of m.notes) out.push({ text: n, fontSize: 7, color: C.muted })
+  }
+  return out
+}
+
+function loadoutSections(c: Character): Section[] {
+  const lo = buildLoadout(c)
+  const general = generalPools(c)
+  const pick = (ids: string[]) =>
+    ids.map((id) => general.find((p) => p.id === id)).filter((p): p is Pool => !!p)
+  const defense = pick([
+    'pool.defense',
+    'pool.fullDefense',
+    'pool.dodge',
+    'pool.block',
+    'pool.fullDefenseDodge',
+    'pool.fullDefenseBlock',
+    'pool.damageResistance',
+  ])
+  const shown = new Set(defense.map((p) => p.id))
+  const other: Pool[] = []
+  for (const p of [...favoritePools(c), ...general])
+    if (!shown.has(p.id) && !other.some((o) => o.label === p.label)) {
+      shown.add(p.id)
+      other.push(p)
+    }
+  const s: Section[] = []
+  s.push({
+    id: 'lo-overview',
+    title: 'Character overview',
+    content: () => {
+      const e = edge(c)
+      const who =
+        [c.identity.name, c.identity.alias && `“${c.identity.alias}”`, c.identity.metatype]
+          .filter(Boolean)
+          .join(' · ') || '—'
+      const limits: Content[] = [
+        'Physical ',
+        val(limit(c, 'physical')),
+        '   Mental ',
+        val(limit(c, 'mental')),
+        '   Social ',
+        val(limit(c, 'social')),
+      ]
+      if (c.modules.magic) limits.push('   Astral ', val(limit(c, 'astral')))
+      const rows: [string, Content | string][] = [
+        ['Character', who],
+        ['Limits', { text: limits as never }],
+        ['Armor in use', val(armorValue(c))],
+        ['Edge', `${dash(e.remaining)} of ${dash(e.total)} remaining`],
+      ]
+      for (const m of relevantInitModes(c))
+        rows.push([initiative(c, m).score.label, initText(c, m)])
+      const out: Content[] = [
+        sectionTitle('Character overview'),
+        kv(rows),
+        { stack: [conditionBlock(c)], margin: [0, 6, 0, 0] },
+      ]
+      if (c.isExample)
+        out.push({
+          text: 'EXAMPLE DATA — not a real character',
+          color: C.accent2,
+          bold: true,
+          fontSize: 8,
+        })
+      return out
+    },
+  })
+  s.push({
+    id: 'lo-defense',
+    title: 'Defense & damage resistance',
+    content: () => [sectionTitle('Defense & Damage Resistance'), poolTable(defense)],
+  })
+  if (lo.count === 0)
+    s.push({
+      id: 'lo-empty',
+      title: 'No carried items',
+      content: () => [
+        { text: 'No items are marked Carried.', fontSize: 9, color: C.muted, margin: [0, 6, 0, 0] },
+      ],
+    })
+  if (lo.ranged.length || lo.melee.length)
+    s.push({
+      id: 'lo-weapons',
+      title: `Carried weapons (${lo.ranged.length + lo.melee.length})`,
+      content: () => {
+        const out: Content[] = [sectionTitle('Carried weapons')]
+        const notes = (pool: Pool, mods: Character['modifiers']): TableCell => ({
+          text: [poolNotes(pool), linkedText(mods), basis(pool)].filter(Boolean).join(' · '),
+          fontSize: 6.8,
+          color: C.muted,
+        })
+        if (lo.ranged.length)
+          out.push(
+            table(
+              ['Ranged weapon', 'Pool', 'Acc', 'DV', 'AP', 'Mode', 'RC', 'Ammo', 'Notes'],
+              lo.ranged.map(({ item: w, pool, mods }) => [
+                { text: w.name || '—', bold: true },
+                { ...(val(pool) as object), alignment: 'center' } as TableCell,
+                { text: dash(pool.limit?.value ?? w.accuracy), alignment: 'center' },
+                { text: dash(w.damage) },
+                { text: dash(w.ap) },
+                { text: dash(w.mode) },
+                { text: dash(w.rc) },
+                { text: ammoText(w), fontSize: 7.5 },
+                notes(pool, mods),
+              ]),
+              [70, 26, 22, 34, 24, 30, 22, 62, '*'],
+            ),
+          )
+        if (lo.melee.length)
+          out.push(
+            table(
+              ['Melee weapon', 'Pool', 'Acc', 'Reach', 'DV', 'AP', 'Notes'],
+              lo.melee.map(({ item: w, pool, mods }) => [
+                { text: w.name || '—', bold: true },
+                { ...(val(pool) as object), alignment: 'center' } as TableCell,
+                { text: dash(pool.limit?.value ?? w.accuracy), alignment: 'center' },
+                { text: dash(w.reach), alignment: 'center' },
+                { text: dash(w.damage) },
+                { text: dash(w.ap) },
+                notes(pool, mods),
+              ]),
+              [80, 26, 22, 30, 50, 26, '*'],
+            ),
+          )
+        return out
+      },
+    })
+  if (lo.armor.length)
+    s.push({
+      id: 'lo-armor',
+      title: `Carried armor (${lo.armor.length})`,
+      content: () => [
+        sectionTitle('Carried armor'),
+        table(
+          ['Armor', 'Rating', 'Worn', 'Notes / linked modifiers'],
+          lo.armor.map(({ item: a, mods }) => [
+            { text: a.name || '—', bold: true },
+            {
+              text: a.rating === null ? '—' : `${a.accessory ? '+' : ''}${a.rating}`,
+              alignment: 'center',
+            },
+            { text: a.equipped ? 'worn' : 'not worn', alignment: 'center' },
+            {
+              text: [a.notes, linkedText(mods)].filter(Boolean).join(' · ') || '—',
+              fontSize: 7.5,
+            },
+          ]),
+          [130, 40, 46, '*'],
+        ),
+        {
+          text: ['Armor in use (worn only, p. 169): ', val(armorValue(c))] as never,
+          fontSize: 8.5,
+        },
+      ],
+    })
+  const rcc = c.rigger.rcc
+  const gearRows: TableCell[][] = [
+    ...lo.gear.map(({ item: g, mods }): TableCell[] => [
+      { text: g.name || '—', bold: true },
+      { text: dash(g.category) },
+      { text: dash(g.rating), alignment: 'center' },
+      { text: dash(g.quantity), alignment: 'center' },
+      { text: [g.notes, linkedText(mods)].filter(Boolean).join(' · ') || '—', fontSize: 7.5 },
+    ]),
+    ...lo.devices.map(({ item: d, mods }): TableCell[] => [
+      { text: d.name || '—', bold: true },
+      { text: `${d.type}${d.active ? ' (active)' : ''}` },
+      { text: dash(d.deviceRating), alignment: 'center' },
+      { text: '—', alignment: 'center' },
+      {
+        text: [
+          `ATT ${dash(d.attack)} · SLZ ${dash(d.sleaze)} · DP ${dash(d.dataProcessing)} · FW ${dash(d.firewall)} · Matrix ${d.matrixDamage}/${dash(matrixMonitor(c, `device.${d.id}.cm`, d.deviceRating, 'Matrix').value)}`,
+          linkedText(mods),
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        fontSize: 7.5,
+      },
+    ]),
+    ...lo.foci.map(({ item: f, mods }): TableCell[] => [
+      { text: f.name || '—', bold: true },
+      { text: `Focus${f.type ? ` (${f.type})` : ''}${f.active ? ', active' : ''}` },
+      { text: dash(f.force), alignment: 'center' },
+      { text: '—', alignment: 'center' },
+      {
+        text: [f.bonded ? 'bonded' : 'not bonded', linkedText(mods)].filter(Boolean).join(' · '),
+        fontSize: 7.5,
+      },
+    ]),
+  ]
+  if (lo.rccCarried)
+    gearRows.push([
+      { text: rcc.name || 'Rigger Command Console', bold: true },
+      { text: 'RCC' },
+      { text: dash(rcc.deviceRating), alignment: 'center' },
+      { text: '—', alignment: 'center' },
+      {
+        text: `DP ${dash(rcc.dataProcessing)} · FW ${dash(rcc.firewall)} · Noise Red. ${dash(rcc.noiseReduction)} · Sharing ${dash(rcc.sharing)} · Matrix ${rcc.matrixDamage}/${dash(matrixMonitor(c, 'rcc.cm', rcc.deviceRating, 'RCC').value)}`,
+        fontSize: 7.5,
+      },
+    ])
+  if (gearRows.length)
+    s.push({
+      id: 'lo-gear',
+      title: `Carried gear (${gearRows.length})`,
+      content: () => [
+        sectionTitle('Carried gear'),
+        table(['Item', 'Category / type', 'Rating', 'Qty', 'Details'], gearRows, [
+          120,
+          80,
+          36,
+          26,
+          '*',
+        ]),
+      ],
+    })
+  for (const lv of lo.vehicles)
+    s.push({
+      id: `lo-vehicle-${lv.vehicle.id}`,
+      title: `${lv.vehicle.kind === 'drone' ? 'Drone' : 'Vehicle'}: ${lv.vehicle.name || 'Unnamed'}`,
+      content: () => vehicleBlock(lv),
+    })
+  if (other.length)
+    s.push({
+      id: 'lo-pools',
+      title: 'Favorite & general pools',
+      content: () => [sectionTitle('Favorite & general pools'), poolTable(other)],
+    })
+  s.push({
+    id: 'lo-mods',
+    title: 'Active modifiers & manual overrides',
+    content: () => {
+      const out: Content[] = [sectionTitle('Active modifiers & manual overrides')]
+      const mt = modifiersTable(c)
+      const ob = overridesBlock(c)
+      if (mt) out.push(mt)
+      if (ob) out.push(ob)
+      if (!mt && !ob)
+        out.push({ text: 'No active modifiers or overrides.', fontSize: 8, color: C.muted })
+      if (lo.warnings.length)
+        out.push({
+          text: lo.warnings.join('  ·  '),
+          fontSize: 7.5,
+          color: C.amber,
+          margin: [0, 4, 0, 0],
+        })
+      out.push({
+        text: '“Carried” lists what is brought on the mission; it does not equip or activate anything. Pools use the sheet’s own worn/active state.',
+        fontSize: 7,
+        color: C.muted,
+        margin: [0, 4, 0, 0],
+      })
+      return out
+    },
+  })
   return s
 }
 
@@ -1145,7 +1555,7 @@ export function buildPdfDoc(c: Character, o: PdfOptions): TDocumentDefinitions {
     pageSize: 'A4',
     pageMargins: [36, 46, 36, 40],
     info: {
-      title: `${name} — SR5 Character Sheet`,
+      title: `${name} — SR5 ${o.mode === 'loadout' ? 'Current Loadout' : 'Character Sheet'}`,
       subject: 'Shadowrun 5th Edition character sheet',
       creator: 'SR5 Runner Sheet',
     },
@@ -1157,7 +1567,9 @@ export function buildPdfDoc(c: Character, o: PdfOptions): TDocumentDefinitions {
           text:
             o.mode === 'full'
               ? 'SHADOWRUN 5E · FULL CHARACTER SHEET'
-              : 'SHADOWRUN 5E · PLAY SUMMARY',
+              : o.mode === 'loadout'
+                ? 'SHADOWRUN 5E · CURRENT LOADOUT'
+                : 'SHADOWRUN 5E · PLAY SUMMARY',
           alignment: 'right',
           fontSize: 8,
           color: C.accent,

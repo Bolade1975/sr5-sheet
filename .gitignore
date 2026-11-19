@@ -11,3 +11,5 @@ node_modules/.tmp
 sr5-backup-*.json
 characters/
 private/
+# Exported PDFs contain character data.
+*.pdf

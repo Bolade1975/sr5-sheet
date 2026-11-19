@@ -211,9 +211,18 @@ export function MagicTab() {
 
       <Panel title="Foci" module>
         <ItemList
+          carried
           items={m.foci}
           onChange={(v) => update((x) => void (x.magic.foci = v))}
-          make={() => ({ name: '', type: '', force: null, bonded: true, active: false, notes: '' })}
+          make={() => ({
+            name: '',
+            type: '',
+            force: null,
+            bonded: true,
+            active: false,
+            carried: false,
+            notes: '',
+          })}
           title={(f) => (
             <>
               {f.active && <span className="badge cyan">active</span>} {f.name || 'Unnamed focus'}{' '}

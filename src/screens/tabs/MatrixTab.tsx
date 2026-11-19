@@ -54,6 +54,7 @@ export function MatrixTab() {
         <ItemList
           items={m.devices}
           onChange={(v) => update((x) => void (x.matrix.devices = v))}
+          carried
           make={() => ({
             name: '',
             type: 'cyberdeck' as const,
@@ -65,6 +66,7 @@ export function MatrixTab() {
             programSlots: null,
             matrixDamage: 0,
             active: m.devices.length === 0,
+            carried: false,
             notes: '',
           })}
           title={(d) => (

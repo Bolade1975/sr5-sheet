@@ -21,6 +21,47 @@ const STEPS: Record<number, (raw: Raw) => Raw> = {
     out.schemaVersion = 1
     return out
   },
+  // v1 → v2: "carried" flags, equipment links and the Karma History log.
+  // New fields get their defaults from the schema (carried = false, links =
+  // null). Karma *spending* entries (negative Karma) of the older combined
+  // Karma & ¥ history are moved — not copied — into the Karma History so
+  // they are reused without being counted twice. Balances are never touched.
+  1: (raw) => {
+    const out: Raw = { ...raw }
+    const ledger = Array.isArray(raw.ledger) ? (raw.ledger as unknown[]) : []
+    const keep: unknown[] = []
+    const moved: Raw[] = []
+    for (const e of ledger) {
+      if (
+        isObj(e) &&
+        e.currency === 'karma' &&
+        typeof e.amount === 'number' &&
+        Number.isInteger(e.amount) &&
+        e.amount < 0
+      ) {
+        moved.push({
+          id: typeof e.id === 'string' && e.id ? e.id : `ledger-${moved.length + 1}`,
+          date: typeof e.date === 'string' ? e.date : '',
+          category: 'Other',
+          name: typeof e.description === 'string' ? e.description : '',
+          before: '',
+          after: '',
+          karmaSpent: -e.amount,
+          entryType: 'historical',
+          comment: 'Moved from the Karma & ¥ history.',
+          source: '',
+          fromLedgerId: typeof e.id === 'string' ? e.id : null,
+        })
+      } else keep.push(e)
+    }
+    if (moved.length) {
+      out.ledger = keep
+      const existing = Array.isArray(raw.karmaHistory) ? (raw.karmaHistory as unknown[]) : []
+      out.karmaHistory = [...existing, ...moved]
+    }
+    out.schemaVersion = 2
+    return out
+  },
 }
 
 function isObj(v: unknown): v is Raw {

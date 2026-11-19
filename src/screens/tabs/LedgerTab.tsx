@@ -72,6 +72,12 @@ export function LedgerTab() {
             <NumberField label="Change (+/−)" value={amount} onChange={setAmount} />
             <TextField label="Description" value={desc} onChange={setDesc} className="full" />
           </div>
+          {currency === 'karma' && amount !== null && amount < 0 && (
+            <div className="banner warn">
+              Karma spent on improvements belongs in the Karma History tab, which the Karma
+              reconciliation counts. Negative Karma entered here is not counted as spent.
+            </div>
+          )}
           <label className="check">
             <input
               type="checkbox"

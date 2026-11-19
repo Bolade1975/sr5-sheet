@@ -5,7 +5,9 @@ import { CharacterContext, useCharacterStore, type SaveStatus } from '../state/s
 import { CoreTab } from './tabs/CoreTab'
 import { ExportTab } from './tabs/ExportTab'
 import { GearTab } from './tabs/GearTab'
+import { KarmaHistoryTab } from './tabs/KarmaHistoryTab'
 import { LedgerTab } from './tabs/LedgerTab'
+import { LoadoutTab } from './tabs/LoadoutTab'
 import { MagicTab } from './tabs/MagicTab'
 import { MatrixTab } from './tabs/MatrixTab'
 import { ModifiersTab } from './tabs/ModifiersTab'
@@ -19,6 +21,7 @@ import { SocialTab } from './tabs/SocialTab'
 
 export type TabKey =
   | 'play'
+  | 'loadout'
   | 'core'
   | 'skills'
   | 'pools'
@@ -26,6 +29,7 @@ export type TabKey =
   | 'mods'
   | 'social'
   | 'karma'
+  | 'karmaLog'
   | 'rigger'
   | 'matrix'
   | 'magic'
@@ -37,6 +41,7 @@ type TabDef = { key: TabKey; label: string; module?: keyof Character['modules'] 
 
 const TABS: TabDef[] = [
   { key: 'play', label: 'Play' },
+  { key: 'loadout', label: 'Current Loadout' },
   { key: 'core', label: 'Core' },
   { key: 'skills', label: 'Skills' },
   { key: 'pools', label: 'Pools' },
@@ -44,6 +49,7 @@ const TABS: TabDef[] = [
   { key: 'mods', label: 'Modifiers' },
   { key: 'social', label: 'Social' },
   { key: 'karma', label: 'Karma & ¥' },
+  { key: 'karmaLog', label: 'Karma History' },
   { key: 'rigger', label: 'Rigger', module: 'rigger' },
   { key: 'matrix', label: 'Matrix', module: 'decker' },
   { key: 'magic', label: 'Magic', module: 'magic' },
@@ -134,6 +140,7 @@ export function CharacterScreen(props: {
           </div>
         )}
         {tab === 'play' && <PlayTab />}
+        {tab === 'loadout' && <LoadoutTab />}
         {tab === 'core' && <CoreTab />}
         {tab === 'skills' && <SkillsTab />}
         {tab === 'pools' && <PoolsTab />}
@@ -141,6 +148,7 @@ export function CharacterScreen(props: {
         {tab === 'mods' && <ModifiersTab />}
         {tab === 'social' && <SocialTab />}
         {tab === 'karma' && <LedgerTab />}
+        {tab === 'karmaLog' && <KarmaHistoryTab />}
         {tab === 'rigger' && <RiggerTab />}
         {tab === 'matrix' && <MatrixTab />}
         {tab === 'magic' && <MagicTab />}

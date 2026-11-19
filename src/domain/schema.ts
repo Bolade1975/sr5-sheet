@@ -9,7 +9,7 @@ import { z } from 'zod'
  * Convention: numeric values the player has not entered are `null`, never 0,
  * so calculations can report "missing input" instead of a misleading total.
  */
-export const CHARACTER_SCHEMA_VERSION = 1
+export const CHARACTER_SCHEMA_VERSION = 2
 
 const id = z.string().min(1)
 const str = z.string().default('')
@@ -18,6 +18,12 @@ const nInt = int.nullable().default(null)
 const num = z.number()
 const nNum = num.nullable().default(null)
 const bool = (d: boolean) => z.boolean().default(d)
+/**
+ * "Carried on the current mission". Purely a packing marker: it never equips,
+ * activates or applies any bonus (worn armor, active weapons and modifiers
+ * keep their own switches).
+ */
+const carried = bool(false)
 
 export const ATTRIBUTE_KEYS = [
   'BOD',
@@ -65,6 +71,8 @@ export const ModifierSchema = z.object({
   condition: str,
   source: str,
   notes: str,
+  /** Optional link to the equipment item that grants this modifier (display only). */
+  itemId: z.string().nullable().default(null),
 })
 export type Modifier = z.infer<typeof ModifierSchema>
 
@@ -161,6 +169,9 @@ export const RangedWeaponSchema = z.object({
   /** Spare clips / rounds carried, free text e.g. "3 clips regular, 1 APDS". */
   ammoSpare: str,
   active: bool(false),
+  carried,
+  /** Vehicle/drone id when the weapon is mounted on a vehicle (Rigger module). */
+  mountedOn: z.string().nullable().default(null),
   source: str,
   notes: str,
 })
@@ -175,6 +186,7 @@ export const MeleeWeaponSchema = z.object({
   damage: str,
   ap: str,
   active: bool(false),
+  carried,
   source: str,
   notes: str,
 })
@@ -187,6 +199,7 @@ export const ArmorSchema = z.object({
   /** Armor accessories ("+" rating, p. 169) add to the highest armor. */
   accessory: bool(false),
   equipped: bool(false),
+  carried,
   source: str,
   notes: str,
 })
@@ -198,6 +211,7 @@ export const GearSchema = z.object({
   rating: nInt,
   quantity: nInt,
   category: str,
+  carried,
   source: str,
   notes: str,
 })
@@ -253,6 +267,43 @@ export const LedgerEntrySchema = z.object({
 })
 export type LedgerEntry = z.infer<typeof LedgerEntrySchema>
 
+export const KARMA_CATEGORIES = [
+  'Skill',
+  'Skill Group',
+  'Knowledge/Language',
+  'Attribute',
+  'Specialization',
+  'Quality',
+  'Magic/Resonance',
+  'Spell/Complex Form',
+  'Initiation/Submersion',
+  'Other',
+] as const
+export const KarmaCategory = z.enum(KARMA_CATEGORIES)
+export type KarmaCategory = z.infer<typeof KarmaCategory>
+
+/**
+ * Manual Karma spending log. Purely a record: entries never change the
+ * character's skills/attributes nor the stored Karma balances. `entryType`
+ * only labels whether the purchase was logged when made or back-entered.
+ */
+export const KarmaEntrySchema = z.object({
+  id,
+  date: str,
+  category: KarmaCategory.default('Other'),
+  name: str,
+  /** Free text so both numbers ("3") and text ("—", "Pistols") fit. */
+  before: str,
+  after: str,
+  karmaSpent: nInt,
+  entryType: z.enum(['new', 'historical']).default('new'),
+  comment: str,
+  source: str,
+  /** Set when the entry was moved from the older Karma & ¥ history (v1 → v2). */
+  fromLedgerId: z.string().nullable().default(null),
+})
+export type KarmaEntry = z.infer<typeof KarmaEntrySchema>
+
 export const PoolPartSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('attribute'), key: AttributeKey }),
   z.object({ kind: z.literal('skill'), skillId: z.string() }),
@@ -296,16 +347,34 @@ export const VehicleSchema = z.object({
   sensors: str,
   ammo: str,
   active: bool(false),
+  carried,
+  /** The rigger's Pilot skill used for this vehicle (Vehicle tests, p. 199). */
+  pilotSkillId: z.string().nullable().default(null),
   source: str,
   notes: str,
 })
 export type Vehicle = z.infer<typeof VehicleSchema>
+
+export const AutosoftKind = z.enum([
+  'clearsight',
+  'targeting',
+  'maneuvering',
+  'stealth',
+  'evasion',
+  'electronicWarfare',
+  'other',
+])
+export type AutosoftKind = z.infer<typeof AutosoftKind>
 
 export const AutosoftSchema = z.object({
   id,
   name: str,
   rating: nInt,
   skill: str,
+  /** Autosoft type (p. 269–270). 'other' is never used in automatic pools. */
+  kind: AutosoftKind.default('other'),
+  /** For [Weapon] Targeting: the ranged weapon it is written for. */
+  weaponId: z.string().nullable().default(null),
   /** Vehicle ids the autosoft is installed on / RCC-shared when empty. */
   vehicleIds: z.array(z.string()).default([]),
   sharedOnRcc: bool(false),
@@ -323,6 +392,7 @@ export const RiggerSchema = z.object({
       noiseReduction: nInt,
       sharing: nInt,
       matrixDamage: int.default(0),
+      carried,
       notes: str,
     })
     .prefault({}),
@@ -343,6 +413,7 @@ export const MatrixDeviceSchema = z.object({
   programSlots: nInt,
   matrixDamage: int.default(0),
   active: bool(false),
+  carried,
   notes: str,
 })
 export type MatrixDevice = z.infer<typeof MatrixDeviceSchema>
@@ -396,6 +467,7 @@ export const FocusSchema = z.object({
   force: nInt,
   bonded: bool(true),
   active: bool(false),
+  carried,
   notes: str,
 })
 export const SpiritSchema = z.object({
@@ -508,6 +580,7 @@ export const CharacterSchema = z.object({
   reputation: z.object({ streetCred: nInt, notoriety: nInt, publicAwareness: nInt }).prefault({}),
   resources: z.object({ nuyen: nInt, karma: nInt, karmaTotal: nInt }).prefault({}),
   ledger: z.array(LedgerEntrySchema).default([]),
+  karmaHistory: z.array(KarmaEntrySchema).default([]),
   customPools: z.array(CustomPoolSchema).default([]),
   /** Ids of built-in pools pinned to the Play dashboard. */
   favoritePools: z.array(z.string()).default(['defense', 'damageResistance', 'perception']),

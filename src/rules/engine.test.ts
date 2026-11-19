@@ -32,6 +32,7 @@ function mod(partial: Partial<Modifier> & { targets: string[]; value: number }):
     condition: '',
     source: '',
     notes: '',
+    itemId: null,
     ...partial,
   }
 }
@@ -143,6 +144,7 @@ describe('armor (p. 169)', () => {
         rating: 12,
         accessory: false,
         equipped: true,
+        carried: false,
         source: '',
         notes: '',
       },
@@ -152,6 +154,7 @@ describe('armor (p. 169)', () => {
         rating: 9,
         accessory: false,
         equipped: true,
+        carried: false,
         source: '',
         notes: '',
       },
@@ -161,6 +164,7 @@ describe('armor (p. 169)', () => {
         rating: 6,
         accessory: true,
         equipped: true,
+        carried: false,
         source: '',
         notes: '',
       },
@@ -170,6 +174,7 @@ describe('armor (p. 169)', () => {
         rating: 20,
         accessory: false,
         equipped: false,
+        carried: false,
         source: '',
         notes: '',
       },
@@ -235,6 +240,7 @@ describe('initiative (p. 159)', () => {
       programSlots: 3,
       matrixDamage: 0,
       active: true,
+      carried: false,
       notes: '',
     })
     expect(initiative(c, 'matrixHot').score.value).toBe(11)
@@ -340,6 +346,8 @@ describe('modifier targeting & no double counting', () => {
       ammoType: '',
       ammoSpare: '',
       active: true,
+      carried: false,
+      mountedOn: null,
       source: '',
       notes: '',
     }
@@ -434,6 +442,8 @@ describe('movement, matrix and vehicle monitors', () => {
       sensors: '',
       ammo: '',
       active: true,
+      carried: false,
+      pilotSkillId: null,
       source: '',
       notes: '',
     }

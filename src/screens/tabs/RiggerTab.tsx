@@ -2,16 +2,46 @@ import { droneInitiative, initiative, matrixMonitor, vehicleMonitor } from '../.
 import { generalPools } from '../../rules/pools'
 import { useChar } from '../../state/store'
 import { Panel, PoolCard, Readout } from '../../ui/components'
-import { NumberField, TextField } from '../../ui/fields'
+import { Check, NumberField, TextField } from '../../ui/fields'
 import { ItemList } from '../../ui/ItemList'
 import { NOTES_FIELD, SOURCE_FIELD } from '../../ui/fieldDefs'
 import { Track } from './PlayTab'
+
+const AUTOSOFT_KIND_LABEL = {
+  clearsight: 'Clearsight',
+  targeting: 'Targeting',
+  maneuvering: 'Maneuvering',
+  stealth: 'Stealth',
+  evasion: 'Evasion',
+  electronicWarfare: 'Electronic Warfare',
+  other: 'Other',
+} as const
+
+const AUTOSOFT_KIND_OPTIONS = (
+  Object.keys(AUTOSOFT_KIND_LABEL) as (keyof typeof AUTOSOFT_KIND_LABEL)[]
+).map((k) => ({ value: k, label: AUTOSOFT_KIND_LABEL[k] }))
 
 export function RiggerTab() {
   const { c, update } = useChar()
   const r = c.rigger
   const setRcc = <K extends keyof typeof r.rcc>(k: K, v: (typeof r.rcc)[K]) =>
     update((x) => void (x.rigger.rcc[k] = v))
+  const pilotSkillOptions = [
+    { value: '', label: '— choose Pilot skill —' },
+    ...c.skills
+      .filter((s) => s.category === 'vehicle' && s.catalogKey !== 'gunnery')
+      .map((s) => ({ value: s.id, label: s.name || 'Unnamed skill' })),
+    ...c.skills
+      .filter((s) => s.category !== 'vehicle')
+      .map((s) => ({ value: s.id, label: `${s.name || 'Unnamed skill'} (non-vehicle)` })),
+  ]
+  const weaponOptions = [
+    { value: '', label: '— weapon —' },
+    ...c.rangedWeapons.map((w) => ({
+      value: w.id,
+      label: `${w.name || 'Unnamed weapon'}${w.mountedOn ? ` (on ${r.vehicles.find((v) => v.id === w.mountedOn)?.name || 'vehicle'})` : ''}`,
+    })),
+  ]
   return (
     <div className="grid wide">
       <Panel title="Control Rig & Initiative" module>
@@ -76,6 +106,11 @@ export function RiggerTab() {
             value={r.rcc.sharing}
             onChange={(v) => setRcc('sharing', v)}
           />
+          <Check
+            label="Carried (Current Loadout)"
+            checked={r.rcc.carried}
+            onChange={(v) => setRcc('carried', v)}
+          />
         </div>
         <div style={{ marginTop: 10 }}>
           <Track
@@ -124,6 +159,8 @@ export function RiggerTab() {
             sensors: '',
             ammo: '',
             active: false,
+            carried: false,
+            pilotSkillId: null,
             source: '',
             notes: '',
           })}
@@ -143,6 +180,7 @@ export function RiggerTab() {
             { label: 'Sen', get: (v) => v.sensor ?? '—' },
             { label: 'CM', get: (v) => `${v.damage}/${vehicleMonitor(c, v).value ?? '?'}` },
           ]}
+          carried
           addLabel="Add vehicle or drone"
           fields={[
             { key: 'name', label: 'Name / model', type: 'text', full: true },
@@ -164,9 +202,16 @@ export function RiggerTab() {
             { key: 'sensor', label: 'Sensor', type: 'int' },
             { key: 'seats', label: 'Seats', type: 'int' },
             { key: 'deviceRating', label: 'Device Rating', type: 'int' },
+            {
+              key: 'pilotSkillId',
+              label: 'Your Pilot skill for it',
+              type: 'select',
+              options: pilotSkillOptions,
+              nullable: true,
+            },
             { key: 'active', label: 'Active (Play dashboard)', type: 'bool' },
             { key: 'mods', label: 'Modifications', type: 'textarea' },
-            { key: 'weapons', label: 'Weapons / mounts', type: 'textarea' },
+            { key: 'weapons', label: 'Weapons / mounts (notes)', type: 'textarea' },
             { key: 'sensors', label: 'Sensors', type: 'textarea' },
             { key: 'ammo', label: 'Ammunition', type: 'textarea' },
             SOURCE_FIELD,
@@ -215,11 +260,18 @@ export function RiggerTab() {
             name: '',
             rating: null,
             skill: '',
+            kind: 'other' as const,
+            weaponId: null,
             vehicleIds: [],
             sharedOnRcc: false,
             notes: '',
           })}
-          title={(a) => a.name || 'Unnamed autosoft'}
+          title={(a) => (
+            <>
+              {a.kind !== 'other' && <span className="badge">{AUTOSOFT_KIND_LABEL[a.kind]}</span>}{' '}
+              {a.name || 'Unnamed autosoft'}
+            </>
+          )}
           columns={[
             { label: 'Rtg', get: (a) => a.rating ?? '—' },
             {
@@ -236,6 +288,19 @@ export function RiggerTab() {
           fields={[
             { key: 'name', label: 'Autosoft', type: 'text', full: true },
             { key: 'rating', label: 'Rating', type: 'int' },
+            {
+              key: 'kind',
+              label: 'Type (used in pools)',
+              type: 'select',
+              options: AUTOSOFT_KIND_OPTIONS,
+            },
+            {
+              key: 'weaponId',
+              label: 'Targeting: for weapon',
+              type: 'select',
+              options: weaponOptions,
+              nullable: true,
+            },
             { key: 'skill', label: 'Skill / weapon it replaces', type: 'text' },
             { key: 'sharedOnRcc', label: 'Shared via RCC', type: 'bool' },
             NOTES_FIELD,

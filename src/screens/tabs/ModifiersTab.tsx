@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Modifier } from '../../domain/schema'
+import { equipmentIndex } from '../../rules/loadout'
 import { activeOverrides } from '../../rules/summary'
 import { targetLabel, targetOptions } from '../../rules/targets'
 import { useChar } from '../../state/store'
@@ -10,6 +11,11 @@ import { ItemList } from '../../ui/ItemList'
 export function ModifiersTab() {
   const { c, update } = useChar()
   const overrides = activeOverrides(c)
+  const items = equipmentIndex(c)
+  const itemOptions = [
+    { value: '', label: '— none —' },
+    ...items.map((i) => ({ value: i.id, label: i.label })),
+  ]
   return (
     <div className="grid wide">
       <Panel
@@ -29,6 +35,7 @@ export function ModifiersTab() {
             condition: '',
             source: '',
             notes: '',
+            itemId: null,
           })}
           title={(m) => (
             <>
@@ -45,6 +52,8 @@ export function ModifiersTab() {
               )}
               <div className="hint">
                 → {m.targets.map((t) => targetLabel(c, t)).join(', ') || 'no target selected'}
+                {m.itemId &&
+                  ` · from ${items.find((i) => i.id === m.itemId)?.label ?? 'deleted item'}`}
               </div>
             </>
           )}
@@ -65,6 +74,13 @@ export function ModifiersTab() {
             { key: 'active', label: 'Active now (situational)', type: 'bool' },
             { key: 'condition', label: 'Condition (when it applies)', type: 'text', full: true },
             { key: 'source', label: 'Source (gear/quality/power, page)', type: 'text' },
+            {
+              key: 'itemId',
+              label: 'Linked item (shown on Current Loadout)',
+              type: 'select',
+              options: itemOptions,
+              nullable: true,
+            },
             { key: 'notes', label: 'Notes', type: 'textarea' },
           ]}
           extra={(m, set) => <TargetPicker m={m} set={(targets) => set({ targets })} />}

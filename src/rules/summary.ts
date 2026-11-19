@@ -14,6 +14,7 @@ import {
   type Derived,
   type InitMode,
 } from './engine'
+import { allVehiclePools } from './loadout'
 import { allPools, knowledgePool, languagePool } from './pools'
 
 /** Every derived value of a character (used for override labels and the PDF). */
@@ -69,6 +70,7 @@ export function allDerived(c: Character): Derived[] {
     )
     if (v.kind === 'drone') out.push(droneInitiative(c, v))
   }
+  out.push(...allVehiclePools(c))
   return out
 }
 
